@@ -1,6 +1,6 @@
 # Digital whiteboard
 
-Monorepo with a Fastify + SQLite API and a Vite + React canvas client. Drawings sync in real time over WebSockets; strokes are persisted per board.
+Collaborative drawing app using Fastify + SQLite API and a Vite + React canvas client. Drawings sync in real time over WebSockets; strokes are persisted per board.
 
 ## Prerequisites
 
