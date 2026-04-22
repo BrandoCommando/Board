@@ -244,6 +244,26 @@ select {
   border-bottom: 1px solid #2a303c;
 }
 
+.strokePanelHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.strokePanelLogout {
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #3a4254;
+  background: #1b2230;
+  color: #e8eaed;
+  cursor: pointer;
+}
+
+.strokePanelLogout:hover {
+  border-color: #5c6a8a;
+}
+
 .strokePanelTitle {
   font-weight: 650;
 }

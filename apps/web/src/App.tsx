@@ -463,9 +463,6 @@ export function App() {
         >
           Undo
         </button>
-        <button type="button" onClick={logout}>
-          Log out
-        </button>
       </div>
       {loadError ? (
         <div className="authError" style={{ padding: "0.75rem 1rem" }}>
@@ -485,10 +482,13 @@ export function App() {
         </div>
         <aside className="strokePanel">
           <div className="strokePanelHeader">
-            <div className="strokePanelTitle">Strokes</div>
-            <div className="strokePanelSub">
-              {me ? me.email : "Unknown user"} · {strokes.length}
+            <div className="strokePanelHeaderRow">
+              <div className="strokePanelTitle">Strokes</div>
+              <button type="button" className="strokePanelLogout" onClick={logout}>
+                Log out
+              </button>
             </div>
+            <div className="strokePanelSub">{me ? me.email : "Unknown user"} · {strokes.length}</div>
           </div>
           <div className="strokeList" role="list">
             {[...strokes].reverse().map((s) => {
