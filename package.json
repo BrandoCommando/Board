@@ -1,0 +1,10 @@
+{
+  "name": "board",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "db:push": "pnpm --filter server exec drizzle-kit push"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

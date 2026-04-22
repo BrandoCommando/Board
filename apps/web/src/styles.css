@@ -1,0 +1,156 @@
+:root {
+  color-scheme: light dark;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    sans-serif;
+  line-height: 1.4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #0f1115;
+  color: #e8eaed;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.appShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #2a303c;
+  background: #141821;
+}
+
+.toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #c5cad6;
+}
+
+.toolbar input[type="color"] {
+  width: 2.25rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid #3a4254;
+  border-radius: 4px;
+  background: #1b2230;
+}
+
+.toolbar input[type="range"] {
+  width: 140px;
+}
+
+.toolbar button {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #3a4254;
+  background: #1b2230;
+  color: #e8eaed;
+  cursor: pointer;
+}
+
+.toolbar button:hover {
+  border-color: #5c6a8a;
+}
+
+.toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.authPanel {
+  max-width: 360px;
+  margin: 2rem auto;
+  padding: 1.25rem;
+  border-radius: 10px;
+  border: 1px solid #2a303c;
+  background: #141821;
+}
+
+.authPanel h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.authPanel form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.authPanel input {
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #3a4254;
+  background: #0f1115;
+  color: #e8eaed;
+}
+
+.authError {
+  color: #ff8b8b;
+  font-size: 0.9rem;
+}
+
+.canvasWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.boardCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  background: #fafbff;
+}
+
+.statusPill {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #3a4254;
+  color: #c5cad6;
+}
+
+.statusPill.ok {
+  border-color: #2f6f4b;
+  color: #9dffc6;
+}
+
+.statusPill.warn {
+  border-color: #8a6a2f;
+  color: #ffe29d;
+}
+
+.statusPill.err {
+  border-color: #8a2f2f;
+  color: #ffb4b4;
+}
