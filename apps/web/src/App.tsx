@@ -15,6 +15,7 @@ import type { Point, StrokePayload, StrokeRecord } from "./types";
 import { connectWhiteboardSocket } from "./ws";
 
 const TOKEN_KEY = "board_token";
+const ANON_KEY = "board_anon_id";
 
 type DashPreset = "solid" | "dashed" | "dotted";
 
@@ -35,6 +36,7 @@ export function App() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [boardId, setBoardId] = useState<string | null>(null);
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
@@ -67,6 +69,14 @@ export function App() {
     else sessionStorage.removeItem(TOKEN_KEY);
   }, []);
 
+  const anonId = useMemo(() => {
+    const existing = sessionStorage.getItem(ANON_KEY);
+    if (existing) return existing;
+    const created = crypto.randomUUID();
+    sessionStorage.setItem(ANON_KEY, created);
+    return created;
+  }, []);
+
   const submitAuth = useCallback(
     async (ev: React.FormEvent) => {
       ev.preventDefault();
@@ -78,6 +88,8 @@ export function App() {
             : await apiLogin(email, password);
         persistToken(res.token);
         setMe(res.user);
+        setShowAuthModal(false);
+        setAuthError(null);
       } catch (e) {
         setAuthError(e instanceof Error ? e.message : "Authentication failed");
       }
@@ -96,7 +108,10 @@ export function App() {
   }, [persistToken]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setMe({ id: `anon:${anonId}`, email: "Guest", role: "View-Only" });
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoadError(null);
@@ -131,7 +146,31 @@ export function App() {
   }, [token]);
 
   useEffect(() => {
-    if (!token || !boardId) return;
+    if (token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadError(null);
+        const remoteBoards = await apiBoards(null);
+        if (cancelled) return;
+        const ordered = ["Main", "Scribbles", "Doodles", "Other"] as const;
+        const mapped = remoteBoards.map((b) => ({ id: b.id, name: b.name }));
+        mapped.sort((a, b) => ordered.indexOf(a.name as never) - ordered.indexOf(b.name as never));
+        const filtered = mapped.filter((b) => ordered.includes(b.name as never));
+        setBoards(filtered);
+        const first = filtered[0];
+        if (first) setBoardId((prev) => prev ?? first.id);
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load boards");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (!boardId) return;
     let cancelled = false;
     (async () => {
       try {
@@ -222,8 +261,8 @@ export function App() {
   const drawingActive = useRef(false);
 
   const onPointerDown = (ev: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!token || !boardId) return;
-    if (me?.role === "View-Only") return;
+    if (!boardId) return;
+    if (!token || me?.role === "View-Only") return;
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
@@ -237,7 +276,7 @@ export function App() {
 
   const onPointerMove = (ev: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawingActive.current) return;
-    if (me?.role === "View-Only") return;
+    if (!token || me?.role === "View-Only") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -254,12 +293,13 @@ export function App() {
   };
 
   useEffect(() => {
-    if (!token || !boardId) {
+    if (!boardId) {
       socketRef.current = null;
       return;
     }
     const sock = connectWhiteboardSocket(
       () => sessionStorage.getItem(TOKEN_KEY),
+      () => anonId,
       {
         onStatus: (s) => {
           if (s === "connecting") setWsStatus("connecting");
@@ -299,11 +339,11 @@ export function App() {
       sock.close();
       socketRef.current = null;
     };
-  }, [token, boardId]);
+  }, [anonId, boardId, token]);
 
   const flushStroke = useCallback(() => {
     if (!boardId) return;
-    if (me?.role === "View-Only") return;
+    if (!token || me?.role === "View-Only") return;
     const wrap = wrapRef.current;
     if (!wrap) return;
     const minSide = Math.min(Math.max(1, wrap.clientWidth), Math.max(1, wrap.clientHeight));
@@ -333,10 +373,10 @@ export function App() {
     socketRef.current?.sendStroke(boardId, localId, payload);
     drawingActive.current = false;
     setDraftPoints(null);
-  }, [boardId, color, dashPreset, me?.id, widthSlider]);
+  }, [boardId, color, dashPreset, me?.id, token, widthSlider]);
 
   const undoMyLastStroke = useCallback(async () => {
-    if (!token || !boardId || !me) return;
+    if (!token || !boardId || !me || me.role === "View-Only") return;
     const mine = [...strokesRef.current]
       .filter((s) => s.boardId === boardId && s.userId === me.id && !s.id.startsWith("local:"))
       .pop();
@@ -375,10 +415,18 @@ export function App() {
     return { text: "Idle", cls: "" as const };
   }, [wsStatus]);
 
-  if (!token) {
-    return (
-      <div className="appShell">
-        <div className="authPanel">
+  const authModal = showAuthModal ? (
+    <div className="modalOverlay" onClick={() => setShowAuthModal(false)}>
+      <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="modalClose"
+          onClick={() => setShowAuthModal(false)}
+          aria-label="Close"
+        >
+          &times;
+        </button>
+        <div className="authPanel" style={{ margin: 0, width: "100%" }}>
           <h1>Board</h1>
           <p style={{ marginTop: 0, color: "#9aa3b5", textAlign: "center", fontSize: "0.95rem" }}>
             {authMode === "register"
@@ -434,11 +482,12 @@ export function App() {
           </form>
         </div>
       </div>
-    );
-  }
+    </div>
+  ) : null;
 
   return (
     <div className="appShell">
+      {authModal}
       <div className="toolbar">
         <span className={`statusPill ${wsLabel.cls}`}>{wsLabel.text}</span>
         {wsDiag ? <span className="authError">{wsDiag}</span> : null}
@@ -456,6 +505,28 @@ export function App() {
             ))}
           </select>
         </label>
+        {!token ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("login");
+                setShowAuthModal(true);
+              }}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("register");
+                setShowAuthModal(true);
+              }}
+            >
+              Register
+            </button>
+          </>
+        ) : null}
         {me?.role === "View-Only" ? (
           <span className="viewOnlyHint">View-only</span>
         ) : (
@@ -528,23 +599,36 @@ export function App() {
         <div ref={wrapRef} className="canvasWrap">
           <canvas
             ref={canvasRef}
-            className={`boardCanvas ${me?.role === "View-Only" ? "disabled" : ""}`}
+            className={`boardCanvas ${!token || me?.role === "View-Only" ? "disabled" : ""}`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
           />
         </div>
-        {me?.role === "View-Only" ? (
+        {!token || me?.role === "View-Only" ? (
           <aside className="strokePanel">
             <div className="strokePanelHeader">
               <div className="strokePanelHeaderRow">
                 <div className="strokePanelTitle">Account</div>
-                <button type="button" className="strokePanelLogout" onClick={logout}>
-                  Log out
-                </button>
+                {token ? (
+                  <button type="button" className="strokePanelLogout" onClick={logout}>
+                    Log out
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="strokePanelLogout"
+                    onClick={() => {
+                      setAuthMode("login");
+                      setShowAuthModal(true);
+                    }}
+                  >
+                    Login
+                  </button>
+                )}
               </div>
-              <div className="strokePanelSub">{me ? me.email : "Unknown user"} · View-only</div>
+              <div className="strokePanelSub">{me ? me.email : "Loading..."} · View-only</div>
             </div>
           </aside>
         ) : (

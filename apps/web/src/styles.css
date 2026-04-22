@@ -226,6 +226,58 @@ select {
   font-size: 0.9rem;
 }
 
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  animation: modalEnter 0.2s ease-out;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalClose {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #9aa3b5;
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.modalClose:hover {
+  color: #e8eaed;
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .canvasWrap {
   position: relative;
   flex: 1;

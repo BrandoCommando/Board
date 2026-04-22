@@ -28,6 +28,10 @@ export const wsClientMessageSchema = z.discriminatedUnion("type", [
     token: z.string().min(1),
   }),
   z.object({
+    type: z.literal("anon"),
+    anonId: z.string().min(1).max(128),
+  }),
+  z.object({
     type: z.literal("joinBoard"),
     boardId: z.string().min(1),
   }),

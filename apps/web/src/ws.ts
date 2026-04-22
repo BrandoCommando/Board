@@ -16,6 +16,7 @@ export type WhiteboardSocket = {
 
 export function connectWhiteboardSocket(
   getToken: () => string | null,
+  getAnonId: () => string,
   handlers: {
     onStatus?: (status: "connecting" | "open" | "closed" | "error") => void;
     onAuthOk?: () => void;
@@ -53,12 +54,8 @@ export function connectWhiteboardSocket(
     ws.addEventListener("open", () => {
       handlers.onStatus?.("open");
       const token = getToken();
-      if (!token) {
-        handlers.onError?.("Missing token");
-        ws?.close();
-        return;
-      }
-      send({ type: "auth", token });
+      if (token) send({ type: "auth", token });
+      else send({ type: "anon", anonId: getAnonId() });
     });
 
     ws.addEventListener("message", (ev) => {

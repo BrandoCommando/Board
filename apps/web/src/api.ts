@@ -44,11 +44,11 @@ export async function apiLogin(
   return body;
 }
 
-export async function apiBoards(token: string): Promise<
+export async function apiBoards(token?: string | null): Promise<
   { id: string; name: string; createdAt: Date | null }[]
 > {
   const res = await fetch("/api/boards", {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   const body = await readJson<{ boards: { id: string; name: string; createdAt: string | null }[] }>(
     res,
@@ -79,7 +79,7 @@ export async function apiMe(
 }
 
 export async function apiStrokes(
-  token: string,
+  token: string | null | undefined,
   boardId: string,
 ): Promise<
   {
@@ -91,7 +91,7 @@ export async function apiStrokes(
   }[]
 > {
   const res = await fetch(`/api/boards/${encodeURIComponent(boardId)}/strokes`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   const body = await readJson<{
     strokes: {

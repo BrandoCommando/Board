@@ -215,14 +215,10 @@ fastify.post("/api/auth/login", async (req, reply) => {
   return { token, user: { id: user.id, email: user.email, role } };
 });
 
-fastify.get(
-  "/api/boards",
-  { preHandler: requireUser },
-  async (req) => {
-    const rows = db.select().from(boards).all();
-    return { boards: rows };
-  },
-);
+fastify.get("/api/boards", async () => {
+  const rows = db.select().from(boards).all();
+  return { boards: rows };
+});
 
 fastify.get("/api/me", { preHandler: requireUser }, async (req, reply) => {
   const userId = req.userId;
@@ -235,7 +231,6 @@ fastify.get("/api/me", { preHandler: requireUser }, async (req, reply) => {
 
 fastify.get<{ Params: { boardId: string } }>(
   "/api/boards/:boardId/strokes",
-  { preHandler: requireUser },
   async (req, reply) => {
     const { boardId } = req.params;
     const board = db.select().from(boards).where(eq(boards.id, boardId)).get();
@@ -350,6 +345,17 @@ fastify.get("/ws", { websocket: true }, (socket, _req) => {
         socket.send(JSON.stringify({ type: "error", message: "Invalid token" }));
         socket.close();
       }
+      return;
+    }
+
+    if (msg.type === "anon") {
+      if (authed) {
+        socket.send(JSON.stringify({ type: "error", message: "Already authenticated" }));
+        return;
+      }
+      authed = true;
+      socketMeta.set(socket, { userId: `anon:${msg.anonId}`, boardId: null, role: "View-Only" });
+      socket.send(JSON.stringify({ type: "auth_ok" }));
       return;
     }
 
