@@ -31,8 +31,6 @@ export function App() {
 
   const [color, setColor] = useState("#1c2433");
   const [widthSlider, setWidthSlider] = useState(6);
-  const [lineCap, setLineCap] = useState<CanvasLineCap>("round");
-  const [lineJoin, setLineJoin] = useState<CanvasLineJoin>("round");
   const [dashPreset, setDashPreset] = useState<DashPreset>("solid");
 
   const [draftPoints, setDraftPoints] = useState<Point[] | null>(null);
@@ -122,13 +120,13 @@ export function App() {
         points: draftPoints,
         color,
         strokeWidthNorm: clamp(widthSlider / minSide, 0.0005, 0.2),
-        lineCap,
-        lineJoin,
+        lineCap: "round",
+        lineJoin: "round",
         lineDash: dashArrayForPreset(dashPreset),
       };
       drawStroke(ctx, cssWidth, cssHeight, minSide, payload);
     }
-  }, [color, dashPreset, draftPoints, lineCap, lineJoin, widthSlider]);
+  }, [color, dashPreset, draftPoints, widthSlider]);
 
   useEffect(() => {
     paint();
@@ -222,8 +220,8 @@ export function App() {
       points: prev,
       color,
       strokeWidthNorm: clamp(widthSlider / minSide, 0.0005, 0.2),
-      lineCap,
-      lineJoin,
+      lineCap: "round",
+      lineJoin: "round",
       lineDash: dashArrayForPreset(dashPreset),
     };
     const localId = `local:${crypto.randomUUID()}`;
@@ -238,7 +236,7 @@ export function App() {
     socketRef.current?.sendStroke(boardId, payload);
     drawingActive.current = false;
     setDraftPoints(null);
-  }, [boardId, color, dashPreset, lineCap, lineJoin, widthSlider]);
+  }, [boardId, color, dashPreset, widthSlider]);
 
   const onPointerUp = () => {
     if (!drawingActive.current) return;
@@ -335,33 +333,39 @@ export function App() {
           />
           <span style={{ color: "#9aa3b5" }}>{widthSlider}px</span>
         </label>
-        <label>
-          Cap
-          <select value={lineCap} onChange={(e) => setLineCap(e.target.value as CanvasLineCap)}>
-            <option value="round">round</option>
-            <option value="butt">butt</option>
-            <option value="square">square</option>
-          </select>
-        </label>
-        <label>
-          Join
-          <select value={lineJoin} onChange={(e) => setLineJoin(e.target.value as CanvasLineJoin)}>
-            <option value="round">round</option>
-            <option value="miter">miter</option>
-            <option value="bevel">bevel</option>
-          </select>
-        </label>
-        <label>
-          Dash
-          <select
-            value={dashPreset}
-            onChange={(e) => setDashPreset(e.target.value as DashPreset)}
-          >
-            <option value="solid">solid</option>
-            <option value="dashed">dashed</option>
-            <option value="dotted">dotted</option>
-          </select>
-        </label>
+        <fieldset className="dashFieldset">
+          <legend>Dash</legend>
+          <label className="radioPill">
+            <input
+              type="radio"
+              name="dashPreset"
+              value="solid"
+              checked={dashPreset === "solid"}
+              onChange={() => setDashPreset("solid")}
+            />
+            Solid
+          </label>
+          <label className="radioPill">
+            <input
+              type="radio"
+              name="dashPreset"
+              value="dashed"
+              checked={dashPreset === "dashed"}
+              onChange={() => setDashPreset("dashed")}
+            />
+            Dashed
+          </label>
+          <label className="radioPill">
+            <input
+              type="radio"
+              name="dashPreset"
+              value="dotted"
+              checked={dashPreset === "dotted"}
+              onChange={() => setDashPreset("dotted")}
+            />
+            Dotted
+          </label>
+        </fieldset>
         <button type="button" onClick={logout}>
           Log out
         </button>
