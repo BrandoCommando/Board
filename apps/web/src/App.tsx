@@ -20,7 +20,7 @@ function clamp(n: number, lo: number, hi: number) {
 
 export function App() {
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
-  const [me, setMe] = useState<{ id: string; email: string } | null>(null);
+  const [me, setMe] = useState<{ id: string; email: string; role: "User" | "Admin" | "View-Only" } | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -174,6 +174,7 @@ export function App() {
 
   const onPointerDown = (ev: React.PointerEvent<HTMLCanvasElement>) => {
     if (!token || !boardId) return;
+    if (me?.role === "View-Only") return;
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
@@ -187,6 +188,7 @@ export function App() {
 
   const onPointerMove = (ev: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawingActive.current) return;
+    if (me?.role === "View-Only") return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -252,6 +254,7 @@ export function App() {
 
   const flushStroke = useCallback(() => {
     if (!boardId) return;
+    if (me?.role === "View-Only") return;
     const wrap = wrapRef.current;
     if (!wrap) return;
     const minSide = Math.min(Math.max(1, wrap.clientWidth), Math.max(1, wrap.clientHeight));
@@ -455,7 +458,7 @@ export function App() {
         <button
           type="button"
           onClick={undoMyLastStroke}
-          disabled={!me || strokesRef.current.every((s) => s.userId !== me.id)}
+          disabled={!me || me.role === "View-Only" || strokesRef.current.every((s) => s.userId !== me.id)}
           title="Remove your most recent stroke"
         >
           Undo
@@ -491,6 +494,7 @@ export function App() {
             {[...strokes].reverse().map((s) => {
               const isLocal = s.id.startsWith("local:");
               const isMine = !!me && s.userId === me.id && !isLocal;
+              const canDelete = !!me && !isLocal && (isMine || me.role === "Admin");
               const created = s.createdAt ? new Date(s.createdAt) : null;
               return (
                 <div className="strokeRow" role="listitem" key={s.id}>
@@ -509,8 +513,8 @@ export function App() {
                     type="button"
                     className="strokeDelete"
                     onClick={() => deleteMyStroke(s.id)}
-                    disabled={!isMine}
-                    title={isMine ? "Delete this stroke" : "You can only delete your own strokes"}
+                    disabled={!canDelete}
+                    title={canDelete ? "Delete this stroke" : "You can only delete your own strokes"}
                   >
                     Delete
                   </button>

@@ -67,6 +67,16 @@ function ensureBoards() {
 
 ensureBoards();
 
+function ensureAdminEmails() {
+  const adminEmails = ["brandroid64@gmail.com"];
+  for (const emailRaw of adminEmails) {
+    const email = emailRaw.trim().toLowerCase();
+    db.update(users).set({ role: "Admin" }).where(eq(users.email, email)).run();
+  }
+}
+
+ensureAdminEmails();
+
 const registerBody = z.object({
   email: z.string().email().max(320),
   password: z.string().min(8).max(72),
@@ -74,9 +84,19 @@ const registerBody = z.object({
 
 const loginBody = registerBody;
 
-type SocketMeta = { userId: string; boardId: string | null };
+const roleSchema = z.enum(["User", "Admin", "View-Only"]);
+type Role = z.infer<typeof roleSchema>;
+
+type SocketMeta = { userId: string; boardId: string | null; role: Role };
 const socketMeta = new WeakMap<WsWebSocket, SocketMeta>();
 const boardRoom = new Map<string, Set<WsWebSocket>>();
+
+function getRoleForUserId(userId: string): Role {
+  const row = db.select().from(users).where(eq(users.id, userId)).get();
+  const role = row?.role;
+  const parsed = roleSchema.safeParse(role);
+  return parsed.success ? parsed.data : "User";
+}
 
 function addToRoom(boardId: string, ws: WsWebSocket) {
   let set = boardRoom.get(boardId);
@@ -149,10 +169,10 @@ fastify.post("/api/auth/register", async (req, reply) => {
   const id = randomUUID();
   const passwordHash = await hashPassword(parsed.data.password);
   db.insert(users)
-    .values({ id, email, passwordHash, createdAt: new Date() })
+    .values({ id, email, passwordHash, role: "User", createdAt: new Date() })
     .run();
   const token = signAccessToken(id, JWT_SECRET);
-  return { token, user: { id, email } };
+  return { token, user: { id, email, role: "User" as const } };
 });
 
 fastify.post("/api/auth/login", async (req, reply) => {
@@ -170,7 +190,8 @@ fastify.post("/api/auth/login", async (req, reply) => {
     return reply.code(401).send({ error: "Invalid credentials" });
   }
   const token = signAccessToken(user.id, JWT_SECRET);
-  return { token, user: { id: user.id, email: user.email } };
+  const role = roleSchema.safeParse(user.role).success ? (user.role as Role) : ("User" as const);
+  return { token, user: { id: user.id, email: user.email, role } };
 });
 
 fastify.get(
@@ -187,7 +208,8 @@ fastify.get("/api/me", { preHandler: requireUser }, async (req, reply) => {
   if (!userId) return reply.code(401).send({ error: "Unauthorized" });
   const user = db.select().from(users).where(eq(users.id, userId)).get();
   if (!user) return reply.code(401).send({ error: "Unauthorized" });
-  return { user: { id: user.id, email: user.email } };
+  const role = roleSchema.safeParse(user.role).success ? (user.role as Role) : ("User" as const);
+  return { user: { id: user.id, email: user.email, role } };
 });
 
 fastify.get<{ Params: { boardId: string } }>(
@@ -222,10 +244,11 @@ fastify.delete<{ Params: { strokeId: string } }>(
   async (req, reply) => {
     const userId = req.userId;
     if (!userId) return reply.code(401).send({ error: "Unauthorized" });
+    const role = getRoleForUserId(userId);
 
     const stroke = db.select().from(strokes).where(eq(strokes.id, req.params.strokeId)).get();
     if (!stroke) return reply.code(404).send({ error: "Stroke not found" });
-    if (stroke.userId !== userId) return reply.code(403).send({ error: "Forbidden" });
+    if (stroke.userId !== userId && role !== "Admin") return reply.code(403).send({ error: "Forbidden" });
 
     db.delete(strokes).where(eq(strokes.id, stroke.id)).run();
     broadcastStroke(stroke.boardId, { type: "deleteStroke", boardId: stroke.boardId, strokeId: stroke.id });
@@ -267,7 +290,7 @@ fastify.get("/ws", { websocket: true }, (socket, _req) => {
       try {
         const { sub } = verifyAccessToken(msg.token, JWT_SECRET);
         authed = true;
-        socketMeta.set(socket, { userId: sub, boardId: null });
+        socketMeta.set(socket, { userId: sub, boardId: null, role: getRoleForUserId(sub) });
         socket.send(JSON.stringify({ type: "auth_ok" }));
       } catch {
         socket.send(JSON.stringify({ type: "error", message: "Invalid token" }));
@@ -303,6 +326,10 @@ fastify.get("/ws", { websocket: true }, (socket, _req) => {
     if (msg.type === "stroke") {
       if (!meta.boardId || meta.boardId !== msg.boardId) {
         socket.send(JSON.stringify({ type: "error", message: "Join a board first" }));
+        return;
+      }
+      if (meta.role === "View-Only") {
+        socket.send(JSON.stringify({ type: "error", message: "View-Only users cannot draw" }));
         return;
       }
       const board = db.select().from(boards).where(eq(boards.id, msg.boardId)).get();
@@ -365,7 +392,7 @@ fastify.get("/ws", { websocket: true }, (socket, _req) => {
         socket.send(JSON.stringify({ type: "error", message: "Stroke does not belong to board" }));
         return;
       }
-      if (stroke.userId !== meta.userId) {
+      if (stroke.userId !== meta.userId && meta.role !== "Admin") {
         socket.send(JSON.stringify({ type: "error", message: "Forbidden" }));
         return;
       }

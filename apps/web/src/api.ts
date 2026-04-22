@@ -1,6 +1,6 @@
 export type AuthResponse = {
   token: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; role: "User" | "Admin" | "View-Only" };
 };
 
 async function readJson<T>(res: Response): Promise<T> {
@@ -62,11 +62,16 @@ export async function apiBoards(token: string): Promise<
   }));
 }
 
-export async function apiMe(token: string): Promise<{ id: string; email: string }> {
+export async function apiMe(
+  token: string,
+): Promise<{ id: string; email: string; role: "User" | "Admin" | "View-Only" }> {
   const res = await fetch("/api/me", {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const body = await readJson<{ user?: { id: string; email: string }; error?: string }>(res);
+  const body = await readJson<{
+    user?: { id: string; email: string; role: "User" | "Admin" | "View-Only" };
+    error?: string;
+  }>(res);
   if (!res.ok || !body.user) {
     throw new Error(body.error ?? "Failed to load user");
   }
