@@ -86,30 +86,94 @@ select {
 
 .authPanel {
   max-width: 360px;
-  margin: 2rem auto;
-  padding: 1.25rem;
-  border-radius: 10px;
+  margin: 4rem auto;
+  padding: 1.5rem;
+  border-radius: 12px;
   border: 1px solid #2a303c;
   background: #141821;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 .authPanel h1 {
-  margin: 0 0 0.75rem;
-  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.authTabs {
+  display: flex;
+  margin: 1.5rem -1.5rem 1.5rem;
+  border-bottom: 1px solid #2a303c;
+}
+
+.authTab {
+  flex: 1;
+  padding: 0.75rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #9aa3b5;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.authTab:hover {
+  color: #e8eaed;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.authTab.active {
+  color: #e8eaed;
+  border-bottom-color: #3b82f6;
 }
 
 .authPanel form {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 1.25rem;
+}
+
+.authPanel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: #c5cad6;
 }
 
 .authPanel input {
-  padding: 0.45rem 0.55rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
   border-radius: 6px;
   border: 1px solid #3a4254;
   background: #0f1115;
   color: #e8eaed;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.authPanel input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.authPanel button[type="submit"] {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.authPanel button[type="submit"]:hover {
+  background: #2563eb;
 }
 
 .authError {

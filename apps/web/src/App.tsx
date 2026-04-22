@@ -258,27 +258,29 @@ export function App() {
       <div className="appShell">
         <div className="authPanel">
           <h1>Board</h1>
-          <p style={{ marginTop: 0, color: "#9aa3b5" }}>
-            Sign in to open the shared canvas.
+          <p style={{ marginTop: 0, color: "#9aa3b5", textAlign: "center", fontSize: "0.95rem" }}>
+            {authMode === "register"
+              ? "Create an account to join the canvas."
+              : "Sign in to open the shared canvas."}
           </p>
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+          <div className="authTabs">
             <button
               type="button"
+              className={`authTab ${authMode === "login" ? "active" : ""}`}
               onClick={() => {
                 setAuthMode("login");
                 setAuthError(null);
               }}
-              disabled={authMode === "login"}
             >
               Login
             </button>
             <button
               type="button"
+              className={`authTab ${authMode === "register" ? "active" : ""}`}
               onClick={() => {
                 setAuthMode("register");
                 setAuthError(null);
               }}
-              disabled={authMode === "register"}
             >
               Register
             </button>
