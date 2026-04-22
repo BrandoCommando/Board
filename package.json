@@ -1,8 +1,11 @@
 {
   "name": "board",
   "private": true,
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
   "scripts": {
-    "dev": "pnpm -r --parallel run dev",
+    "dev": "concurrently -k --names server,web --prefix-colors blue,green \"pnpm --filter server dev\" \"pnpm --filter web dev\"",
     "build": "pnpm -r run build",
     "db:push": "pnpm --filter server exec drizzle-kit push"
   },
