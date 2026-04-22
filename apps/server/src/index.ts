@@ -98,6 +98,22 @@ function getRoleForUserId(userId: string): Role {
   return parsed.success ? parsed.data : "User";
 }
 
+async function requireAdmin(
+  req: import("fastify").FastifyRequest,
+  reply: import("fastify").FastifyReply,
+) {
+  const userId = req.userId;
+  if (!userId) {
+    reply.code(401).send({ error: "Unauthorized" });
+    return;
+  }
+  const role = getRoleForUserId(userId);
+  if (role !== "Admin") {
+    reply.code(403).send({ error: "Admin required" });
+    return;
+  }
+}
+
 function addToRoom(boardId: string, ws: WsWebSocket) {
   let set = boardRoom.get(boardId);
   if (!set) {
@@ -133,17 +149,22 @@ function broadcastStroke(
   }
 }
 
-async function requireUser(req: import("fastify").FastifyRequest, reply: import("fastify").FastifyReply) {
+async function requireUser(
+  req: import("fastify").FastifyRequest,
+  reply: import("fastify").FastifyReply,
+) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    return reply.code(401).send({ error: "Missing bearer token" });
+    reply.code(401).send({ error: "Missing bearer token" });
+    return;
   }
   const token = header.slice("Bearer ".length).trim();
   try {
     const { sub } = verifyAccessToken(token, JWT_SECRET);
     req.userId = sub;
   } catch {
-    return reply.code(401).send({ error: "Invalid token" });
+    reply.code(401).send({ error: "Invalid token" });
+    return;
   }
 }
 
@@ -252,6 +273,39 @@ fastify.delete<{ Params: { strokeId: string } }>(
 
     db.delete(strokes).where(eq(strokes.id, stroke.id)).run();
     broadcastStroke(stroke.boardId, { type: "deleteStroke", boardId: stroke.boardId, strokeId: stroke.id });
+    return { ok: true };
+  },
+);
+
+fastify.get("/api/admin/users", { preHandler: [requireUser, requireAdmin] }, async () => {
+  const rows = db.select().from(users).all();
+  const normalized = rows
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      role: roleSchema.safeParse(u.role).success ? (u.role as Role) : ("User" as const),
+      createdAt: u.createdAt?.toISOString() ?? null,
+    }))
+    .sort((a, b) => a.email.localeCompare(b.email));
+  return { users: normalized };
+});
+
+fastify.patch<{ Params: { userId: string } }>(
+  "/api/admin/users/:userId",
+  { preHandler: [requireUser, requireAdmin] },
+  async (req, reply) => {
+    const bodyParsed = z.object({ role: roleSchema }).safeParse(req.body);
+    if (!bodyParsed.success) {
+      return reply.code(400).send({ error: "Invalid body", details: bodyParsed.error.flatten() });
+    }
+    const adminId = req.userId;
+    if (!adminId) return reply.code(401).send({ error: "Unauthorized" });
+    if (req.params.userId === adminId && bodyParsed.data.role !== "Admin") {
+      return reply.code(400).send({ error: "Cannot remove your own Admin role" });
+    }
+    const existing = db.select().from(users).where(eq(users.id, req.params.userId)).get();
+    if (!existing) return reply.code(404).send({ error: "User not found" });
+    db.update(users).set({ role: bodyParsed.data.role }).where(eq(users.id, req.params.userId)).run();
     return { ok: true };
   },
 );

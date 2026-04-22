@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { apiBoards, apiDeleteStroke, apiLogin, apiMe, apiRegister, apiStrokes } from "./api";
+import {
+  apiAdminSetUserRole,
+  apiAdminUsers,
+  apiBoards,
+  apiDeleteStroke,
+  apiLogin,
+  apiMe,
+  apiRegister,
+  apiStrokes,
+  type AdminUser,
+} from "./api";
 import { drawStroke, redrawStrokes, resizeCanvasToContainer } from "./canvas/draw";
 import type { Point, StrokePayload, StrokeRecord } from "./types";
 import { connectWhiteboardSocket } from "./ws";
@@ -30,6 +40,8 @@ export function App() {
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [strokes, setStrokes] = useState<StrokeRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[] | null>(null);
+  const [adminError, setAdminError] = useState<string | null>(null);
 
   const [color, setColor] = useState("#1c2433");
   const [widthSlider, setWidthSlider] = useState(6);
@@ -79,6 +91,8 @@ export function App() {
     setBoardId(null);
     setStrokes([]);
     setLoadError(null);
+    setAdminUsers(null);
+    setAdminError(null);
   }, [persistToken]);
 
   useEffect(() => {
@@ -134,6 +148,41 @@ export function App() {
       cancelled = true;
     };
   }, [token, boardId]);
+
+  useEffect(() => {
+    if (!token || me?.role !== "Admin") {
+      setAdminUsers(null);
+      setAdminError(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setAdminError(null);
+        const users = await apiAdminUsers(token);
+        if (!cancelled) setAdminUsers(users);
+      } catch (e) {
+        if (!cancelled) setAdminError(e instanceof Error ? e.message : "Failed to load users");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, me?.role]);
+
+  const setUserRole = useCallback(
+    async (userId: string, role: "User" | "Admin" | "View-Only") => {
+      if (!token) return;
+      try {
+        await apiAdminSetUserRole(token, userId, role);
+        setAdminUsers((prev) => (prev ? prev.map((u) => (u.id === userId ? { ...u, role } : u)) : prev));
+        if (me?.id === userId) setMe((m) => (m ? { ...m, role } : m));
+      } catch (e) {
+        setAdminError(e instanceof Error ? e.message : "Failed to update role");
+      }
+    },
+    [me?.id, token],
+  );
 
   const paint = useCallback(() => {
     const wrap = wrapRef.current;
@@ -407,62 +456,68 @@ export function App() {
             ))}
           </select>
         </label>
-        <label>
-          Color
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
-        </label>
-        <label>
-          Width
-          <input
-            type="range"
-            min={1}
-            max={40}
-            value={widthSlider}
-            onChange={(e) => setWidthSlider(Number(e.target.value))}
-          />
-          <span style={{ color: "#9aa3b5" }}>{widthSlider}px</span>
-        </label>
-        <fieldset className="dashFieldset">
-          <legend>Dash</legend>
-          <label className="radioPill">
-            <input
-              type="radio"
-              name="dashPreset"
-              value="solid"
-              checked={dashPreset === "solid"}
-              onChange={() => setDashPreset("solid")}
-            />
-            Solid
-          </label>
-          <label className="radioPill">
-            <input
-              type="radio"
-              name="dashPreset"
-              value="dashed"
-              checked={dashPreset === "dashed"}
-              onChange={() => setDashPreset("dashed")}
-            />
-            Dashed
-          </label>
-          <label className="radioPill">
-            <input
-              type="radio"
-              name="dashPreset"
-              value="dotted"
-              checked={dashPreset === "dotted"}
-              onChange={() => setDashPreset("dotted")}
-            />
-            Dotted
-          </label>
-        </fieldset>
-        <button
-          type="button"
-          onClick={undoMyLastStroke}
-          disabled={!me || me.role === "View-Only" || strokesRef.current.every((s) => s.userId !== me.id)}
-          title="Remove your most recent stroke"
-        >
-          Undo
-        </button>
+        {me?.role === "View-Only" ? (
+          <span className="viewOnlyHint">View-only</span>
+        ) : (
+          <>
+            <label>
+              Color
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            </label>
+            <label>
+              Width
+              <input
+                type="range"
+                min={1}
+                max={40}
+                value={widthSlider}
+                onChange={(e) => setWidthSlider(Number(e.target.value))}
+              />
+              <span style={{ color: "#9aa3b5" }}>{widthSlider}px</span>
+            </label>
+            <fieldset className="dashFieldset">
+              <legend>Dash</legend>
+              <label className="radioPill">
+                <input
+                  type="radio"
+                  name="dashPreset"
+                  value="solid"
+                  checked={dashPreset === "solid"}
+                  onChange={() => setDashPreset("solid")}
+                />
+                Solid
+              </label>
+              <label className="radioPill">
+                <input
+                  type="radio"
+                  name="dashPreset"
+                  value="dashed"
+                  checked={dashPreset === "dashed"}
+                  onChange={() => setDashPreset("dashed")}
+                />
+                Dashed
+              </label>
+              <label className="radioPill">
+                <input
+                  type="radio"
+                  name="dashPreset"
+                  value="dotted"
+                  checked={dashPreset === "dotted"}
+                  onChange={() => setDashPreset("dotted")}
+                />
+                Dotted
+              </label>
+            </fieldset>
+            <button
+              type="button"
+              onClick={undoMyLastStroke}
+              disabled={!me || strokesRef.current.every((s) => s.userId !== me.id)}
+              title="Remove your most recent stroke"
+            >
+              Undo
+            </button>
+          </>
+        )}
       </div>
       {loadError ? (
         <div className="authError" style={{ padding: "0.75rem 1rem" }}>
@@ -473,56 +528,95 @@ export function App() {
         <div ref={wrapRef} className="canvasWrap">
           <canvas
             ref={canvasRef}
-            className="boardCanvas"
+            className={`boardCanvas ${me?.role === "View-Only" ? "disabled" : ""}`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
           />
         </div>
-        <aside className="strokePanel">
-          <div className="strokePanelHeader">
-            <div className="strokePanelHeaderRow">
-              <div className="strokePanelTitle">Strokes</div>
-              <button type="button" className="strokePanelLogout" onClick={logout}>
-                Log out
-              </button>
+        {me?.role === "View-Only" ? (
+          <aside className="strokePanel">
+            <div className="strokePanelHeader">
+              <div className="strokePanelHeaderRow">
+                <div className="strokePanelTitle">Account</div>
+                <button type="button" className="strokePanelLogout" onClick={logout}>
+                  Log out
+                </button>
+              </div>
+              <div className="strokePanelSub">{me ? me.email : "Unknown user"} · View-only</div>
             </div>
-            <div className="strokePanelSub">{me ? me.email : "Unknown user"} · {strokes.length}</div>
-          </div>
-          <div className="strokeList" role="list">
-            {[...strokes].reverse().map((s) => {
-              const isLocal = s.id.startsWith("local:");
-              const isMine = !!me && s.userId === me.id && !isLocal;
-              const canDelete = !!me && !isLocal && (isMine || me.role === "Admin");
-              const created = s.createdAt ? new Date(s.createdAt) : null;
-              return (
-                <div className="strokeRow" role="listitem" key={s.id}>
-                  <div className="strokeMeta">
-                    <div className="strokePrimary">
-                      <span className="strokeColor" style={{ background: s.payload.color }} />
-                      <span className="strokeName">{isMine ? "You" : "User"}</span>
-                      <span className="strokeId">{s.id.slice(0, 8)}</span>
-                      {isLocal ? <span className="strokeBadge">sending</span> : null}
+          </aside>
+        ) : (
+          <aside className="strokePanel">
+            <div className="strokePanelHeader">
+              <div className="strokePanelHeaderRow">
+                <div className="strokePanelTitle">Strokes</div>
+                <button type="button" className="strokePanelLogout" onClick={logout}>
+                  Log out
+                </button>
+              </div>
+              <div className="strokePanelSub">{me ? me.email : "Unknown user"} · {strokes.length}</div>
+            </div>
+            <div className="strokeList" role="list">
+              {[...strokes].reverse().map((s) => {
+                const isLocal = s.id.startsWith("local:");
+                const isMine = !!me && s.userId === me.id && !isLocal;
+                const canDelete = !!me && !isLocal && (isMine || me.role === "Admin");
+                const created = s.createdAt ? new Date(s.createdAt) : null;
+                return (
+                  <div className="strokeRow" role="listitem" key={s.id}>
+                    <div className="strokeMeta">
+                      <div className="strokePrimary">
+                        <span className="strokeColor" style={{ background: s.payload.color }} />
+                        <span className="strokeName">{isMine ? "You" : "User"}</span>
+                        <span className="strokeId">{s.id.slice(0, 8)}</span>
+                        {isLocal ? <span className="strokeBadge">sending</span> : null}
+                      </div>
+                      <div className="strokeSecondary">
+                        {created ? created.toLocaleString() : "—"} · {s.payload.points.length} pts
+                      </div>
                     </div>
-                    <div className="strokeSecondary">
-                      {created ? created.toLocaleString() : "—"} · {s.payload.points.length} pts
-                    </div>
+                    <button
+                      type="button"
+                      className="strokeDelete"
+                      onClick={() => deleteMyStroke(s.id)}
+                      disabled={!canDelete}
+                      title={canDelete ? "Delete this stroke" : "You can only delete your own strokes"}
+                    >
+                      Delete
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="strokeDelete"
-                    onClick={() => deleteMyStroke(s.id)}
-                    disabled={!canDelete}
-                    title={canDelete ? "Delete this stroke" : "You can only delete your own strokes"}
-                  >
-                    Delete
-                  </button>
+                );
+              })}
+            </div>
+            {me?.role === "Admin" ? (
+              <div className="adminPanel">
+                <div className="adminPanelHeader">Users</div>
+                {adminError ? <div className="adminError">{adminError}</div> : null}
+                <div className="adminUserList" role="list">
+                  {(adminUsers ?? []).map((u) => (
+                    <div className="adminUserRow" role="listitem" key={u.id}>
+                      <div className="adminUserMeta">
+                        <div className="adminUserEmail">{u.email}</div>
+                        <div className="adminUserSub">{u.id.slice(0, 8)}</div>
+                      </div>
+                      <select
+                        className="adminRoleSelect"
+                        value={u.role}
+                        onChange={(e) => setUserRole(u.id, e.target.value as AdminUser["role"])}
+                      >
+                        <option value="User">User</option>
+                        <option value="Admin">Admin</option>
+                        <option value="View-Only">View-Only</option>
+                      </select>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        </aside>
+              </div>
+            ) : null}
+          </aside>
+        )}
       </div>
     </div>
   );

@@ -123,3 +123,39 @@ export async function apiDeleteStroke(token: string, strokeId: string): Promise<
     throw new Error(text || "Failed to delete stroke");
   }
 }
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  role: "User" | "Admin" | "View-Only";
+  createdAt: string | null;
+};
+
+export async function apiAdminUsers(token: string): Promise<AdminUser[]> {
+  const res = await fetch("/api/admin/users", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await readJson<{ users?: AdminUser[]; error?: string }>(res);
+  if (!res.ok || !body.users) throw new Error(body.error ?? "Failed to load users");
+  return body.users;
+}
+
+export async function apiAdminSetUserRole(
+  token: string,
+  userId: string,
+  role: "User" | "Admin" | "View-Only",
+): Promise<void> {
+  const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+  if (res.ok) return;
+  const text = await res.text();
+  try {
+    const body = JSON.parse(text) as { error?: string };
+    throw new Error(body.error ?? "Failed to update role");
+  } catch {
+    throw new Error(text || "Failed to update role");
+  }
+}

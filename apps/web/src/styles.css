@@ -53,6 +53,14 @@ select {
   color: #c5cad6;
 }
 
+.viewOnlyHint {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #3a4254;
+  color: #c5cad6;
+}
+
 .dashFieldset {
   display: inline-flex;
   align-items: center;
@@ -282,6 +290,70 @@ select {
   gap: 0.45rem;
 }
 
+.adminPanel {
+  border-top: 1px solid #2a303c;
+  padding: 0.6rem 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.adminPanelHeader {
+  font-weight: 650;
+}
+
+.adminError {
+  color: #ff8b8b;
+  font-size: 0.85rem;
+}
+
+.adminUserList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 36vh;
+  overflow: auto;
+}
+
+.adminUserRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid #2a303c;
+  background: #0f1115;
+}
+
+.adminUserMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.adminUserEmail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.adminUserSub {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: #9aa3b5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.adminRoleSelect {
+  border-radius: 8px;
+  border: 1px solid #3a4254;
+  background: #1b2230;
+  color: #e8eaed;
+  padding: 0.3rem 0.45rem;
+}
+
 .strokeRow {
   display: flex;
   align-items: center;
@@ -370,6 +442,11 @@ select {
 
 .boardCanvas {
   background: #fafbff;
+}
+
+.boardCanvas.disabled {
+  cursor: not-allowed;
+  opacity: 0.95;
 }
 
 @media (max-width: 980px) {
