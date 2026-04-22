@@ -33,8 +33,14 @@ export const wsClientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("stroke"),
+    clientStrokeId: z.string().min(1),
     boardId: z.string().min(1),
     payload: strokePayloadSchema,
+  }),
+  z.object({
+    type: z.literal("deleteStroke"),
+    boardId: z.string().min(1),
+    strokeId: z.string().min(1),
   }),
 ]);
 

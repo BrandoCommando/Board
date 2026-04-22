@@ -3,12 +3,14 @@ import type { StrokePayload, StrokeRecord } from "./types";
 type ServerMessage =
   | { type: "auth_ok" }
   | { type: "joinedBoard"; boardId: string }
-  | { type: "stroke"; stroke: StrokeRecord }
+  | { type: "stroke"; stroke: StrokeRecord; clientStrokeId?: string }
+  | { type: "deleteStroke"; boardId: string; strokeId: string }
   | { type: "error"; message: string };
 
 export type WhiteboardSocket = {
   joinBoard: (boardId: string) => void;
-  sendStroke: (boardId: string, payload: StrokePayload) => void;
+  sendStroke: (boardId: string, clientStrokeId: string, payload: StrokePayload) => void;
+  deleteStroke: (boardId: string, strokeId: string) => void;
   close: () => void;
 };
 
@@ -19,6 +21,8 @@ export function connectWhiteboardSocket(
     onAuthOk?: () => void;
     onJoinedBoard?: (boardId: string) => void;
     onStroke?: (stroke: StrokeRecord) => void;
+    onStrokeAck?: (clientStrokeId: string, stroke: StrokeRecord) => void;
+    onDeleteStroke?: (strokeId: string) => void;
     onError?: (message: string) => void;
   },
 ): WhiteboardSocket {
@@ -77,7 +81,15 @@ export function connectWhiteboardSocket(
         return;
       }
       if (msg.type === "stroke") {
-        handlers.onStroke?.(msg.stroke);
+        if (msg.clientStrokeId) {
+          handlers.onStrokeAck?.(msg.clientStrokeId, msg.stroke);
+        } else {
+          handlers.onStroke?.(msg.stroke);
+        }
+        return;
+      }
+      if (msg.type === "deleteStroke") {
+        handlers.onDeleteStroke?.(msg.strokeId);
         return;
       }
       if (msg.type === "error") {
@@ -104,8 +116,11 @@ export function connectWhiteboardSocket(
       joinedBoardId = boardId;
       send({ type: "joinBoard", boardId });
     },
-    sendStroke(boardId: string, payload: StrokePayload) {
-      send({ type: "stroke", boardId, payload });
+    sendStroke(boardId: string, clientStrokeId: string, payload: StrokePayload) {
+      send({ type: "stroke", boardId, clientStrokeId, payload });
+    },
+    deleteStroke(boardId: string, strokeId: string) {
+      send({ type: "deleteStroke", boardId, strokeId });
     },
     close() {
       stopped = true;

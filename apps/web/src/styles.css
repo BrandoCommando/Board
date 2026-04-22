@@ -224,6 +224,145 @@ select {
   min-height: 0;
 }
 
+.boardLayout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  min-height: 0;
+  flex: 1;
+}
+
+.strokePanel {
+  border-left: 1px solid #2a303c;
+  background: #141821;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.strokePanelHeader {
+  padding: 0.75rem 0.75rem 0.65rem;
+  border-bottom: 1px solid #2a303c;
+}
+
+.strokePanelTitle {
+  font-weight: 650;
+}
+
+.strokePanelSub {
+  margin-top: 0.15rem;
+  color: #9aa3b5;
+  font-size: 0.85rem;
+}
+
+.strokeList {
+  overflow: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.strokeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid #2a303c;
+  background: #0f1115;
+}
+
+.strokeMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.strokePrimary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.strokeSecondary {
+  margin-top: 0.15rem;
+  color: #9aa3b5;
+  font-size: 0.8rem;
+}
+
+.strokeColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  flex: 0 0 auto;
+}
+
+.strokeName {
+  font-size: 0.9rem;
+  color: #e8eaed;
+  flex: 0 0 auto;
+}
+
+.strokeId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.8rem;
+  color: #9aa3b5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strokeBadge {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid #3a4254;
+  color: #c5cad6;
+}
+
+.strokeDelete {
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #3a4254;
+  background: #1b2230;
+  color: #e8eaed;
+  cursor: pointer;
+}
+
+.strokeDelete:hover {
+  border-color: #5c6a8a;
+}
+
+.strokeDelete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.strokeDelete:not(:disabled) {
+  border-color: #8a2f2f;
+}
+
+.strokeDelete:not(:disabled):hover {
+  border-color: #ff8b8b;
+}
+
+.boardCanvas {
+  background: #fafbff;
+}
+
+@media (max-width: 980px) {
+  .boardLayout {
+    grid-template-columns: 1fr;
+  }
+  .strokePanel {
+    border-left: 0;
+    border-top: 1px solid #2a303c;
+    max-height: 38vh;
+  }
+}
+
 .boardCanvas {
   display: block;
   width: 100%;

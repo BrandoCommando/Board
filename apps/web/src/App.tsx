@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { apiBoards, apiLogin, apiRegister, apiStrokes } from "./api";
+import { apiBoards, apiDeleteStroke, apiLogin, apiMe, apiRegister, apiStrokes } from "./api";
 import { drawStroke, redrawStrokes, resizeCanvasToContainer } from "./canvas/draw";
 import type { Point, StrokePayload, StrokeRecord } from "./types";
 import { connectWhiteboardSocket } from "./ws";
@@ -20,6 +20,7 @@ function clamp(n: number, lo: number, hi: number) {
 
 export function App() {
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
+  const [me, setMe] = useState<{ id: string; email: string } | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
@@ -64,6 +65,7 @@ export function App() {
             ? await apiRegister(email, password)
             : await apiLogin(email, password);
         persistToken(res.token);
+        setMe(res.user);
       } catch (e) {
         setAuthError(e instanceof Error ? e.message : "Authentication failed");
       }
@@ -73,6 +75,7 @@ export function App() {
 
   const logout = useCallback(() => {
     persistToken(null);
+    setMe(null);
     setBoardId(null);
     setStrokes([]);
     setLoadError(null);
@@ -84,6 +87,10 @@ export function App() {
     (async () => {
       setLoadError(null);
       try {
+        const currentUser = await apiMe(token);
+        if (cancelled) return;
+        setMe(currentUser);
+
         const remoteBoards = await apiBoards(token);
         if (cancelled) return;
         const ordered = ["Main", "Scribbles", "Doodles", "Other"] as const;
@@ -217,6 +224,21 @@ export function App() {
             return [...prev, stroke];
           });
         },
+        onStrokeAck: (clientStrokeId, stroke) => {
+          setStrokes((prev) => {
+            const idx = prev.findIndex((s) => s.id === clientStrokeId);
+            if (idx === -1) {
+              if (prev.some((p) => p.id === stroke.id)) return prev;
+              return [...prev, stroke];
+            }
+            const next = prev.slice();
+            next[idx] = stroke;
+            return next;
+          });
+        },
+        onDeleteStroke: (strokeId) => {
+          setStrokes((prev) => prev.filter((s) => s.id !== strokeId));
+        },
         onError: (m) => setWsDiag(m),
       },
     );
@@ -251,15 +273,42 @@ export function App() {
     const stroke: StrokeRecord = {
       id: localId,
       boardId,
-      userId: "local",
+      userId: me?.id ?? "local",
       payload,
       createdAt: null,
     };
     setStrokes((s) => [...s, stroke]);
-    socketRef.current?.sendStroke(boardId, payload);
+    socketRef.current?.sendStroke(boardId, localId, payload);
     drawingActive.current = false;
     setDraftPoints(null);
-  }, [boardId, color, dashPreset, widthSlider]);
+  }, [boardId, color, dashPreset, me?.id, widthSlider]);
+
+  const undoMyLastStroke = useCallback(async () => {
+    if (!token || !boardId || !me) return;
+    const mine = [...strokesRef.current]
+      .filter((s) => s.boardId === boardId && s.userId === me.id && !s.id.startsWith("local:"))
+      .pop();
+    if (!mine) return;
+    try {
+      await apiDeleteStroke(token, mine.id);
+      setStrokes((prev) => prev.filter((s) => s.id !== mine.id));
+    } catch (e) {
+      setWsDiag(e instanceof Error ? e.message : "Failed to delete stroke");
+    }
+  }, [boardId, me, token]);
+
+  const deleteMyStroke = useCallback(
+    async (strokeId: string) => {
+      if (!token) return;
+      try {
+        await apiDeleteStroke(token, strokeId);
+        setStrokes((prev) => prev.filter((s) => s.id !== strokeId));
+      } catch (e) {
+        setWsDiag(e instanceof Error ? e.message : "Failed to delete stroke");
+      }
+    },
+    [token],
+  );
 
   const onPointerUp = () => {
     if (!drawingActive.current) return;
@@ -403,6 +452,14 @@ export function App() {
             Dotted
           </label>
         </fieldset>
+        <button
+          type="button"
+          onClick={undoMyLastStroke}
+          disabled={!me || strokesRef.current.every((s) => s.userId !== me.id)}
+          title="Remove your most recent stroke"
+        >
+          Undo
+        </button>
         <button type="button" onClick={logout}>
           Log out
         </button>
@@ -412,15 +469,56 @@ export function App() {
           {loadError}
         </div>
       ) : null}
-      <div ref={wrapRef} className="canvasWrap">
-        <canvas
-          ref={canvasRef}
-          className="boardCanvas"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-        />
+      <div className="boardLayout">
+        <div ref={wrapRef} className="canvasWrap">
+          <canvas
+            ref={canvasRef}
+            className="boardCanvas"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          />
+        </div>
+        <aside className="strokePanel">
+          <div className="strokePanelHeader">
+            <div className="strokePanelTitle">Strokes</div>
+            <div className="strokePanelSub">
+              {me ? me.email : "Unknown user"} · {strokes.length}
+            </div>
+          </div>
+          <div className="strokeList" role="list">
+            {[...strokes].reverse().map((s) => {
+              const isLocal = s.id.startsWith("local:");
+              const isMine = !!me && s.userId === me.id && !isLocal;
+              const created = s.createdAt ? new Date(s.createdAt) : null;
+              return (
+                <div className="strokeRow" role="listitem" key={s.id}>
+                  <div className="strokeMeta">
+                    <div className="strokePrimary">
+                      <span className="strokeColor" style={{ background: s.payload.color }} />
+                      <span className="strokeName">{isMine ? "You" : "User"}</span>
+                      <span className="strokeId">{s.id.slice(0, 8)}</span>
+                      {isLocal ? <span className="strokeBadge">sending</span> : null}
+                    </div>
+                    <div className="strokeSecondary">
+                      {created ? created.toLocaleString() : "—"} · {s.payload.points.length} pts
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="strokeDelete"
+                    onClick={() => deleteMyStroke(s.id)}
+                    disabled={!isMine}
+                    title={isMine ? "Delete this stroke" : "You can only delete your own strokes"}
+                  >
+                    Delete
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
       </div>
     </div>
   );

@@ -182,6 +182,14 @@ fastify.get(
   },
 );
 
+fastify.get("/api/me", { preHandler: requireUser }, async (req, reply) => {
+  const userId = req.userId;
+  if (!userId) return reply.code(401).send({ error: "Unauthorized" });
+  const user = db.select().from(users).where(eq(users.id, userId)).get();
+  if (!user) return reply.code(401).send({ error: "Unauthorized" });
+  return { user: { id: user.id, email: user.email } };
+});
+
 fastify.get<{ Params: { boardId: string } }>(
   "/api/boards/:boardId/strokes",
   { preHandler: requireUser },
@@ -205,6 +213,23 @@ fastify.get<{ Params: { boardId: string } }>(
       createdAt: r.createdAt?.toISOString() ?? null,
     }));
     return { strokes: normalized };
+  },
+);
+
+fastify.delete<{ Params: { strokeId: string } }>(
+  "/api/strokes/:strokeId",
+  { preHandler: requireUser },
+  async (req, reply) => {
+    const userId = req.userId;
+    if (!userId) return reply.code(401).send({ error: "Unauthorized" });
+
+    const stroke = db.select().from(strokes).where(eq(strokes.id, req.params.strokeId)).get();
+    if (!stroke) return reply.code(404).send({ error: "Stroke not found" });
+    if (stroke.userId !== userId) return reply.code(403).send({ error: "Forbidden" });
+
+    db.delete(strokes).where(eq(strokes.id, stroke.id)).run();
+    broadcastStroke(stroke.boardId, { type: "deleteStroke", boardId: stroke.boardId, strokeId: stroke.id });
+    return { ok: true };
   },
 );
 
@@ -319,9 +344,33 @@ fastify.get("/ws", { websocket: true }, (socket, _req) => {
           payload: payloadCheck.data,
           createdAt: createdAt.toISOString(),
         },
+        clientStrokeId: msg.clientStrokeId,
       };
 
-      broadcastStroke(msg.boardId, outgoing, socket);
+      broadcastStroke(msg.boardId, outgoing);
+      return;
+    }
+
+    if (msg.type === "deleteStroke") {
+      if (!meta.boardId || meta.boardId !== msg.boardId) {
+        socket.send(JSON.stringify({ type: "error", message: "Join a board first" }));
+        return;
+      }
+      const stroke = db.select().from(strokes).where(eq(strokes.id, msg.strokeId)).get();
+      if (!stroke) {
+        socket.send(JSON.stringify({ type: "error", message: "Stroke not found" }));
+        return;
+      }
+      if (stroke.boardId !== msg.boardId) {
+        socket.send(JSON.stringify({ type: "error", message: "Stroke does not belong to board" }));
+        return;
+      }
+      if (stroke.userId !== meta.userId) {
+        socket.send(JSON.stringify({ type: "error", message: "Forbidden" }));
+        return;
+      }
+      db.delete(strokes).where(eq(strokes.id, stroke.id)).run();
+      broadcastStroke(stroke.boardId, { type: "deleteStroke", boardId: stroke.boardId, strokeId: stroke.id });
       return;
     }
   });

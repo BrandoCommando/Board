@@ -62,6 +62,17 @@ export async function apiBoards(token: string): Promise<
   }));
 }
 
+export async function apiMe(token: string): Promise<{ id: string; email: string }> {
+  const res = await fetch("/api/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await readJson<{ user?: { id: string; email: string }; error?: string }>(res);
+  if (!res.ok || !body.user) {
+    throw new Error(body.error ?? "Failed to load user");
+  }
+  return body.user;
+}
+
 export async function apiStrokes(
   token: string,
   boardId: string,
@@ -91,4 +102,19 @@ export async function apiStrokes(
     throw new Error(body.error ?? "Failed to load strokes");
   }
   return body.strokes;
+}
+
+export async function apiDeleteStroke(token: string, strokeId: string): Promise<void> {
+  const res = await fetch(`/api/strokes/${encodeURIComponent(strokeId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.ok) return;
+  const text = await res.text();
+  try {
+    const body = JSON.parse(text) as { error?: string };
+    throw new Error(body.error ?? "Failed to delete stroke");
+  } catch {
+    throw new Error(text || "Failed to delete stroke");
+  }
 }
