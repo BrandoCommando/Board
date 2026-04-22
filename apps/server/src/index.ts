@@ -40,20 +40,32 @@ mkdirSync(dirname(resolvedDbPath), { recursive: true });
 
 const db = createDb(resolvedDbPath);
 
-function seedDefaultBoard() {
-  const existing = db.select().from(boards).limit(1).all();
-  if (existing.length === 0) {
-    db.insert(boards)
-      .values({
-        id: randomUUID(),
-        name: "Main board",
-        createdAt: new Date(),
-      })
-      .run();
+function ensureBoards() {
+  const desiredNames = ["Main", "Scribbles", "Doodles", "Other"] as const;
+
+  // Back-compat with earlier scaffold name
+  const legacy = db.select().from(boards).where(eq(boards.name, "Main board")).get();
+  if (legacy) {
+    db.update(boards).set({ name: "Main" }).where(eq(boards.id, legacy.id)).run();
+  }
+
+  const existing = db.select().from(boards).all();
+  const existingNames = new Set(existing.map((b) => b.name));
+
+  for (const name of desiredNames) {
+    if (!existingNames.has(name)) {
+      db.insert(boards)
+        .values({
+          id: randomUUID(),
+          name,
+          createdAt: new Date(),
+        })
+        .run();
+    }
   }
 }
 
-seedDefaultBoard();
+ensureBoards();
 
 const registerBody = z.object({
   email: z.string().email().max(320),

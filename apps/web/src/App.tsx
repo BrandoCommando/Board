@@ -26,6 +26,7 @@ export function App() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [boardId, setBoardId] = useState<string | null>(null);
+  const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [strokes, setStrokes] = useState<StrokeRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -83,17 +84,20 @@ export function App() {
     (async () => {
       setLoadError(null);
       try {
-        const boards = await apiBoards(token);
+        const remoteBoards = await apiBoards(token);
         if (cancelled) return;
-        const first = boards[0];
+        const ordered = ["Main", "Scribbles", "Doodles", "Other"] as const;
+        const mapped = remoteBoards.map((b) => ({ id: b.id, name: b.name }));
+        mapped.sort((a, b) => ordered.indexOf(a.name as never) - ordered.indexOf(b.name as never));
+        const filtered = mapped.filter((b) => ordered.includes(b.name as never));
+        setBoards(filtered);
+
+        const first = filtered[0];
         if (!first) {
           setLoadError("No boards available");
           return;
         }
-        setBoardId(first.id);
-        const remote = await apiStrokes(token, first.id);
-        if (cancelled) return;
-        setStrokes(remote);
+        setBoardId((prev) => prev ?? first.id);
       } catch (e) {
         if (!cancelled) {
           setLoadError(e instanceof Error ? e.message : "Failed to load board");
@@ -104,6 +108,25 @@ export function App() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !boardId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await apiStrokes(token, boardId);
+        if (cancelled) return;
+        setStrokes(remote);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : "Failed to load strokes");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, boardId]);
 
   const paint = useCallback(() => {
     const wrap = wrapRef.current;
@@ -318,6 +341,20 @@ export function App() {
       <div className="toolbar">
         <span className={`statusPill ${wsLabel.cls}`}>{wsLabel.text}</span>
         {wsDiag ? <span className="authError">{wsDiag}</span> : null}
+        <label>
+          Board
+          <select
+            value={boardId ?? ""}
+            onChange={(e) => setBoardId(e.target.value)}
+            disabled={boards.length === 0}
+          >
+            {boards.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           Color
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
