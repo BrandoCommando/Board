@@ -605,15 +605,17 @@ export function App() {
         </div>
       ) : null}
       <div className="boardLayout">
-        <div ref={wrapRef} className="canvasWrap">
-          <canvas
-            ref={canvasRef}
-            className={`boardCanvas ${!token || me?.role === "View-Only" ? "disabled" : ""}`}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-          />
+        <div className="canvasViewport">
+          <div ref={wrapRef} className="canvasWrap">
+            <canvas
+              ref={canvasRef}
+              className={`boardCanvas ${!token || me?.role === "View-Only" ? "disabled" : ""}`}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+            />
+          </div>
         </div>
         {!token || me?.role === "View-Only" ? (
           <aside className="strokePanel">
