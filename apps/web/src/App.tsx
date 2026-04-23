@@ -10,7 +10,7 @@ import {
   apiStrokes,
   type AdminUser,
 } from "./api";
-import { drawStroke, redrawStrokes, resizeCanvasToContainer } from "./canvas/draw";
+import { drawStroke, drawStrokeBoundingBox, redrawStrokes, resizeCanvasToContainer } from "./canvas/draw";
 import type { Point, StrokePayload, StrokeRecord } from "./types";
 import { connectWhiteboardSocket } from "./ws";
 
@@ -41,6 +41,7 @@ export function App() {
   const [boardId, setBoardId] = useState<string | null>(null);
   const [boards, setBoards] = useState<{ id: string; name: string }[]>([]);
   const [strokes, setStrokes] = useState<StrokeRecord[]>([]);
+  const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [adminUsers, setAdminUsers] = useState<AdminUser[] | null>(null);
   const [adminError, setAdminError] = useState<string | null>(null);
@@ -171,6 +172,7 @@ export function App() {
 
   useEffect(() => {
     if (!boardId) return;
+    setSelectedStrokeId(null);
     let cancelled = false;
     (async () => {
       try {
@@ -187,6 +189,13 @@ export function App() {
       cancelled = true;
     };
   }, [token, boardId]);
+
+  useEffect(() => {
+    if (!selectedStrokeId) return;
+    if (!strokes.some((s) => s.id === selectedStrokeId)) {
+      setSelectedStrokeId(null);
+    }
+  }, [selectedStrokeId, strokes]);
 
   useEffect(() => {
     if (!token || me?.role !== "Admin") {
@@ -244,7 +253,12 @@ export function App() {
       };
       drawStroke(ctx, cssWidth, cssHeight, minSide, payload);
     }
-  }, [color, dashPreset, draftPoints, widthSlider]);
+
+    if (selectedStrokeId) {
+      const selected = strokesRef.current.find((s) => s.id === selectedStrokeId);
+      if (selected) drawStrokeBoundingBox(ctx, cssWidth, cssHeight, selected.payload);
+    }
+  }, [color, dashPreset, draftPoints, selectedStrokeId, widthSlider]);
 
   useEffect(() => {
     paint();
@@ -263,6 +277,7 @@ export function App() {
   const onPointerDown = (ev: React.PointerEvent<HTMLCanvasElement>) => {
     if (!boardId) return;
     if (!token || me?.role === "View-Only") return;
+    setSelectedStrokeId(null);
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
@@ -506,26 +521,15 @@ export function App() {
           </select>
         </label>
         {!token ? (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode("login");
-                setShowAuthModal(true);
-              }}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode("register");
-                setShowAuthModal(true);
-              }}
-            >
-              Register
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode("login");
+              setShowAuthModal(true);
+            }}
+          >
+            Log In
+          </button>
         ) : null}
         {me?.role === "View-Only" ? (
           <span className="viewOnlyHint">View-only</span>
@@ -635,7 +639,7 @@ export function App() {
           <aside className="strokePanel">
             <div className="strokePanelHeader">
               <div className="strokePanelHeaderRow">
-                <div className="strokePanelTitle">Strokes</div>
+                <div className="strokePanelTitle">Activity</div>
                 <button type="button" className="strokePanelLogout" onClick={logout}>
                   Log out
                 </button>
@@ -647,28 +651,41 @@ export function App() {
                 const isLocal = s.id.startsWith("local:");
                 const isMine = !!me && s.userId === me.id && !isLocal;
                 const canDelete = !!me && !isLocal && (isMine || me.role === "Admin");
-                const created = s.createdAt ? new Date(s.createdAt) : null;
+              const created = s.createdAt ? new Date(s.createdAt) : null;
+              const activityLabel =
+                isMine
+                  ? "You"
+                  : me?.role === "Admin"
+                    ? (adminUsers?.find((u) => u.id === s.userId)?.email ?? "User")
+                    : "User";
                 return (
-                  <div className="strokeRow" role="listitem" key={s.id}>
+                  <div
+                    className={`strokeRow ${selectedStrokeId === s.id ? "selected" : ""}`}
+                    role="listitem"
+                    key={s.id}
+                    onClick={() => setSelectedStrokeId((prev) => (prev === s.id ? null : s.id))}
+                  >
                     <div className="strokeMeta">
                       <div className="strokePrimary">
                         <span className="strokeColor" style={{ background: s.payload.color }} />
-                        <span className="strokeName">{isMine ? "You" : "User"}</span>
-                        <span className="strokeId">{s.id.slice(0, 8)}</span>
+                      <span className="strokeName">{activityLabel}</span>
                         {isLocal ? <span className="strokeBadge">sending</span> : null}
                       </div>
-                      <div className="strokeSecondary">
-                        {created ? created.toLocaleString() : "—"} · {s.payload.points.length} pts
-                      </div>
+                    {me?.role === "Admin" ? (
+                      <div className="strokeSecondary">{created ? created.toLocaleString() : "—"}</div>
+                    ) : null}
                     </div>
                     <button
                       type="button"
                       className="strokeDelete"
-                      onClick={() => deleteMyStroke(s.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMyStroke(s.id);
+                      }}
                       disabled={!canDelete}
                       title={canDelete ? "Delete this stroke" : "You can only delete your own strokes"}
                     >
-                      Delete
+                    X
                     </button>
                   </div>
                 );

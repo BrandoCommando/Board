@@ -65,3 +65,38 @@ export function drawStroke(
   ctx.stroke();
   ctx.setLineDash([]);
 }
+
+export function drawStrokeBoundingBox(
+  ctx: CanvasRenderingContext2D,
+  cssWidth: number,
+  cssHeight: number,
+  payload: StrokePayload,
+) {
+  if (payload.points.length === 0) return;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of payload.points) {
+    const x = p.x * cssWidth;
+    const y = p.y * cssHeight;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+
+  const pad = 6;
+  const x = Math.max(0, minX - pad);
+  const y = Math.max(0, minY - pad);
+  const w = Math.min(cssWidth - x, maxX - minX + pad * 2);
+  const h = Math.min(cssHeight - y, maxY - minY + pad * 2);
+
+  ctx.save();
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = "#1f2937";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y, Math.max(1, w), Math.max(1, h));
+  ctx.restore();
+}
