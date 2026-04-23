@@ -55,6 +55,8 @@ export function App() {
     "idle",
   );
   const [wsDiag, setWsDiag] = useState<string | null>(null);
+  const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
+  const [mobileActivityOpen, setMobileActivityOpen] = useState(false);
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -275,6 +277,8 @@ export function App() {
   const drawingActive = useRef(false);
 
   const onPointerDown = (ev: React.PointerEvent<HTMLCanvasElement>) => {
+    setMobileToolbarOpen(false);
+    setMobileActivityOpen(false);
     if (!boardId) return;
     if (!token) {
       setAuthMode("login");
@@ -508,7 +512,7 @@ export function App() {
   return (
     <div className="appShell">
       {authModal}
-      <div className="toolbar">
+      <div className={`toolbar ${mobileToolbarOpen ? "mobileOpen" : ""}`}>
         <span className={`statusPill ${wsLabel.cls}`}>{wsLabel.text}</span>
         {wsDiag ? <span className="authError">{wsDiag}</span> : null}
         <label>
@@ -618,7 +622,7 @@ export function App() {
           </div>
         </div>
         {!token || me?.role === "View-Only" ? (
-          <aside className="strokePanel">
+          <aside className={`strokePanel ${mobileActivityOpen ? "mobileOpen" : ""}`}>
             <div className="strokePanelHeader">
               <div className="strokePanelHeaderRow">
                 <div className="strokePanelTitle">Account</div>
@@ -643,7 +647,7 @@ export function App() {
             </div>
           </aside>
         ) : (
-          <aside className="strokePanel">
+          <aside className={`strokePanel ${mobileActivityOpen ? "mobileOpen" : ""}`}>
             <div className="strokePanelHeader">
               <div className="strokePanelHeaderRow">
                 <div className="strokePanelTitle">Activity</div>
@@ -725,6 +729,28 @@ export function App() {
             ) : null}
           </aside>
         )}
+      </div>
+      <div className="mobileFabContainer">
+        <button
+          type="button"
+          className={`mobileFab ${mobileToolbarOpen ? "active" : ""}`}
+          onClick={() => {
+            setMobileToolbarOpen((prev) => !prev);
+            setMobileActivityOpen(false);
+          }}
+        >
+          Tools
+        </button>
+        <button
+          type="button"
+          className={`mobileFab ${mobileActivityOpen ? "active" : ""}`}
+          onClick={() => {
+            setMobileActivityOpen((prev) => !prev);
+            setMobileToolbarOpen(false);
+          }}
+        >
+          Activity
+        </button>
       </div>
     </div>
   );

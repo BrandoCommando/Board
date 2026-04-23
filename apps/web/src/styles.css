@@ -42,6 +42,7 @@ select {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .toolbar {
@@ -326,6 +327,10 @@ select {
   overflow: hidden;
 }
 
+.mobileFabContainer {
+  display: none;
+}
+
 .strokePanelHeader {
   padding: 0.75rem 0.75rem 0.65rem;
   border-bottom: 1px solid #2a303c;
@@ -531,10 +536,56 @@ select {
   .canvasWrap {
     min-width: 840px;
   }
+  .toolbar {
+    display: none;
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    z-index: 1200;
+    border: 1px solid #2a303c;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    max-height: 45vh;
+    overflow: auto;
+  }
+  .toolbar.mobileOpen {
+    display: flex;
+  }
   .strokePanel {
-    border-left: 0;
-    border-top: 1px solid #2a303c;
-    max-height: 38vh;
+    display: none;
+    position: fixed;
+    right: 0.75rem;
+    bottom: 4.75rem;
+    width: min(92vw, 380px);
+    max-height: 60vh;
+    z-index: 1200;
+    border: 1px solid #2a303c;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+  .strokePanel.mobileOpen {
+    display: flex;
+  }
+  .mobileFabContainer {
+    position: fixed;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    display: flex;
+    gap: 0.55rem;
+    z-index: 1250;
+  }
+  .mobileFab {
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid #3a4254;
+    background: #1b2230;
+    color: #e8eaed;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
+  .mobileFab.active {
+    border-color: #3b82f6;
   }
 }
 
