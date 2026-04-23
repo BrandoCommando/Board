@@ -276,7 +276,12 @@ export function App() {
 
   const onPointerDown = (ev: React.PointerEvent<HTMLCanvasElement>) => {
     if (!boardId) return;
-    if (!token || me?.role === "View-Only") return;
+    if (!token) {
+      setAuthMode("login");
+      setShowAuthModal(true);
+      return;
+    }
+    if (me?.role === "View-Only") return;
     setSelectedStrokeId(null);
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
