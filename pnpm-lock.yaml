@@ -20,6 +20,12 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.2
         version: 11.2.0
+      '@types/jsonwebtoken':
+        specifier: ^9.0.7
+        version: 9.0.10
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.19.17
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -48,12 +54,6 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.6
         version: 2.4.6
-      '@types/jsonwebtoken':
-        specifier: ^9.0.7
-        version: 9.0.10
-      '@types/node':
-        specifier: ^22.10.5
-        version: 22.19.17
       '@types/pg':
         specifier: ^8.15.2
         version: 8.20.0
