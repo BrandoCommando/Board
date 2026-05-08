@@ -6,7 +6,8 @@
         },
         "backend": {
             "entrypoint": "apps/server",
-            "routePrefix": "/api"
+            "routePrefix": "/api",
+            "framework": "fastify"
         }
     }
 }
