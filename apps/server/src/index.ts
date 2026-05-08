@@ -35,6 +35,20 @@ if (!DATABASE_URL) {
 const JWT_SECRET = JWT_SECRET_RAW;
 const db = createDb(DATABASE_URL);
 
+async function withTimeout<T>(label: string, promise: Promise<T>, ms = Number(process.env.STARTUP_TIMEOUT_MS ?? 12000)): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Startup timeout during ${label} after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 async function ensureSchema() {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -65,7 +79,7 @@ async function ensureSchema() {
   `);
 }
 
-await ensureSchema();
+await withTimeout("ensureSchema", ensureSchema());
 
 async function ensureBoards() {
   const desiredNames = ["Main", "Scribbles", "Doodles", "Other"] as const;
@@ -92,7 +106,7 @@ async function ensureBoards() {
   }
 }
 
-await ensureBoards();
+await withTimeout("ensureBoards", ensureBoards());
 
 async function ensureAdminEmails() {
   const adminEmails = ["brandroid64@gmail.com"];
@@ -102,7 +116,7 @@ async function ensureAdminEmails() {
   }
 }
 
-await ensureAdminEmails();
+await withTimeout("ensureAdminEmails", ensureAdminEmails());
 
 const registerBody = z.object({
   email: z.string().email().max(320),
