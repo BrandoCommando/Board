@@ -1,18 +1,17 @@
 import "dotenv/config";
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
 import { defineConfig } from "drizzle-kit";
 
-const raw = process.env.DATABASE_URL ?? "./data/app.sqlite";
-const filePath = raw.startsWith("file:") ? raw.slice("file:".length) : raw;
-const resolved = resolve(filePath);
-mkdirSync(dirname(resolved), { recursive: true });
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be set");
+}
 
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
-  dialect: "sqlite",
+  dialect: "postgresql",
   dbCredentials: {
-    url: resolved,
+    url: databaseUrl,
   },
 });

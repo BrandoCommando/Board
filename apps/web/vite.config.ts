@@ -7,14 +7,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    allowedHosts: ["board.brandonbowles.com", "localhost"],
     proxy: {
       "/api": {
         target: apiTarget,
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
-      "/ws": {
+      "/api/ws": {
         target: apiTarget.replace(/^http/, "ws"),
         ws: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },

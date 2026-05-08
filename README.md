@@ -1,6 +1,6 @@
 # Digital whiteboard
 
-Collaborative drawing app using Fastify + SQLite API and a Vite + React canvas client. Drawings sync in real time over WebSockets; strokes are persisted per board.
+Collaborative drawing app using Fastify + Postgres API and a Vite + React canvas client. Drawings sync in real time over WebSockets; strokes are persisted per board.
 
 ## Prerequisites
 
@@ -12,7 +12,9 @@ Collaborative drawing app using Fastify + SQLite API and a Vite + React canvas c
 ```bash
 pnpm install
 cp .env.example apps/server/.env
-# Edit apps/server/.env — set JWT_SECRET to a long random value
+# Edit apps/server/.env:
+# - set JWT_SECRET to a long random value
+# - set DATABASE_URL to your Postgres connection string
 ```
 
 ## Development
@@ -24,9 +26,9 @@ pnpm dev
 ```
 
 - **Web app**: [http://localhost:5173](http://localhost:5173) (Vite)
-- **API / WebSocket**: [http://localhost:3000](http://localhost:3000) (proxied from the web app as `/api` and `/ws`)
+- **API / WebSocket**: [http://localhost:3000](http://localhost:3000) (proxied from the web app as `/api` and `/api/ws`)
 
-The server runs `drizzle-kit push` on each `pnpm dev` in `apps/server` so the SQLite schema stays in sync.
+The server runs `drizzle-kit push` on each `pnpm dev` in `apps/server` so the Postgres schema stays in sync.
 
 Register a user in the UI, then draw. Open a second browser window (or incognito) with another user to see live updates.
 
@@ -44,4 +46,4 @@ Run the server with `NODE_ENV=production` and serve the web `dist` behind the sa
 |----------------|--------------------------------------|
 | `pnpm dev`     | Server + client in watch mode        |
 | `pnpm build`   | Build server and web packages        |
-| `pnpm db:push` | Apply Drizzle schema to SQLite only  |
+| `pnpm db:push` | Apply Drizzle schema to Postgres     |

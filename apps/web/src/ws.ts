@@ -33,7 +33,7 @@ export function connectWhiteboardSocket(
   let joinedBoardId: string | null = null;
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const url = `${protocol}//${window.location.host}/ws`;
+  const url = `${protocol}//${window.location.host}/api/ws`;
 
   function clearTimer() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
