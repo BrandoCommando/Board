@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./fastify-augment.js";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import { randomUUID } from "crypto";
