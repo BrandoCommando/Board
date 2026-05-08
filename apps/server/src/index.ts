@@ -471,4 +471,9 @@ fastify.get("/ws", { websocket: true }, (socket, _req) => {
   });
 });
 
-await fastify.listen({ port: PORT, host: "0.0.0.0" });
+const isServerlessRuntime = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+if (!isServerlessRuntime) {
+  await fastify.listen({ port: PORT, host: "0.0.0.0" });
+}
+
+export default fastify;
