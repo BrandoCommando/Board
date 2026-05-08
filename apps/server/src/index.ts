@@ -3,7 +3,7 @@ import "./fastify-augment.js";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import { randomUUID } from "crypto";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import Fastify from "fastify";
 import { WebSocket as WsWebSocket } from "ws";
 import { z } from "zod";
@@ -34,6 +34,38 @@ if (!DATABASE_URL) {
 
 const JWT_SECRET = JWT_SECRET_RAW;
 const db = createDb(DATABASE_URL);
+
+async function ensureSchema() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id text PRIMARY KEY,
+      email text NOT NULL UNIQUE,
+      password_hash text NOT NULL,
+      role text NOT NULL DEFAULT 'User',
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS boards (
+      id text PRIMARY KEY,
+      name text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS strokes (
+      id text PRIMARY KEY,
+      board_id text NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+      user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      payload jsonb NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+}
+
+await ensureSchema();
 
 async function ensureBoards() {
   const desiredNames = ["Main", "Scribbles", "Doodles", "Other"] as const;
